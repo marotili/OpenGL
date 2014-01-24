@@ -36,11 +36,7 @@ import Graphics.Rendering.OpenGL.GL.Shaders.Variables
 import Graphics.Rendering.OpenGL.GL.StateVar
 import Graphics.Rendering.OpenGL.GL.Tensor
 import Graphics.Rendering.OpenGL.GL.VertexSpec
-import Graphics.Rendering.OpenGL.Raw.Core31
-import Graphics.Rendering.OpenGL.Raw.ARB.ShaderStorageBufferObject
-import Linear
-
---------------------------------------------------------------------------------
+import Graphics.Rendering.OpenGL.Raw
 
 shaderStorageBlockBinding :: Program -> GLuint -> GLuint -> IO ()
 shaderStorageBlockBinding (Program program) = 
@@ -76,7 +72,12 @@ uniformLocation (Program program) name =
 --------------------------------------------------------------------------------
 
 activeUniforms :: Program -> GettableStateVar [(GLint,VariableType,String)]
-activeUniforms = activeVars numActiveUniforms activeUniformMaxLength glGetActiveUniform
+activeUniforms =
+   activeVars
+      numActiveUniforms
+      activeUniformMaxLength
+      glGetActiveUniform
+      unmarshalVariableType
 
 --------------------------------------------------------------------------------
 

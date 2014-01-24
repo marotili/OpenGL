@@ -54,12 +54,7 @@ import Graphics.Rendering.OpenGL.GL.QueryUtils
 import Graphics.Rendering.OpenGL.GL.StateVar
 import Graphics.Rendering.OpenGL.GL.VertexArrays
 import Graphics.Rendering.OpenGL.GLU.ErrorsInternal
-import Graphics.Rendering.OpenGL.Raw.ARB.ComputeShader
-import Graphics.Rendering.OpenGL.Raw.ARB.DrawIndirect
-import Graphics.Rendering.OpenGL.Raw.ARB.QueryBufferObject
-import Graphics.Rendering.OpenGL.Raw.ARB.ShaderAtomicCounters
-import Graphics.Rendering.OpenGL.Raw.ARB.ShaderStorageBufferObject
-import Graphics.Rendering.OpenGL.Raw.Core31
+import Graphics.Rendering.OpenGL.Raw
 
 --------------------------------------------------------------------------------
 
@@ -366,7 +361,7 @@ mapBufferRange ::
 mapBufferRange t o l b =
    fmap (maybeNullPtr Nothing Just) $ mapBufferRange_ t o l b
 
-flushMappedBufferRange :: BufferTarget -> Offset -> Length -> IO()
+flushMappedBufferRange :: BufferTarget -> Offset -> Length -> IO ()
 flushMappedBufferRange t = glFlushMappedBufferRange (marshalBufferTarget t)
 
 --------------------------------------------------------------------------------
@@ -378,73 +373,80 @@ type RangeSize = GLsizeiptr
 type BufferRange = (BufferObject, RangeStartIndex, RangeSize)
 
 data IndexedBufferTarget =
+    --marshaling
        IndexedUniformBuffer
      | IndexedTransformFeedbackBuffer
---marshaling
+     | IndexedAtomicCounterBuffer
+     | IndexedShaderStorageBuffer
+     deriving ( Eq, Ord, Show )
+
 marshalIndexedBufferTarget :: IndexedBufferTarget -> IPName1I
 marshalIndexedBufferTarget x = case x of
+   IndexedAtomicCounterBuffer -> GetAtomicCounterBuffer
+   IndexedShaderStorageBuffer -> GetShaderStorageBuffer
    IndexedTransformFeedbackBuffer -> GetTransformFeedbackBuffer
+
 -- * FIXME
    IndexedUniformBuffer -> GetTransformFeedbackBuffer
---   IndexedUniformBuffer -> GetUniformBufferBinding 
-
-marshalIndexedBufferStart :: IndexedBufferTarget -> IPName1I
-marshalIndexedBufferStart x = case x of
-   IndexedTransformFeedbackBuffer -> GetTransformFeedbackBufferStart
-   -- * FIXME
-   IndexedUniformBuffer -> GetTransformFeedbackBufferStart
-
-marshalIndexedBufferSize :: IndexedBufferTarget -> IPName1I
-marshalIndexedBufferSize x = case x of
-   IndexedTransformFeedbackBuffer -> GetTransformFeedbackBufferSize
-   -- * FIXME
-   IndexedUniformBuffer -> GetTransformFeedbackBufferSize
-
-getIndexed :: Num a => IPName1I -> BufferIndex -> GettableStateVar a
-getIndexed e i = makeGettableStateVar $ getInteger1i fromIntegral e i
 
 --buffer
 bindBufferBase' :: BufferTarget -> BufferIndex -> BufferObject -> IO ()
 bindBufferBase' t i (BufferObject b) = glBindBufferBase (marshalBufferTarget t) i b
 
+--   IndexedUniformBuffer -> GetUniformBuffer
+
 bindBufferBase :: IndexedBufferTarget -> BufferIndex -> StateVar (Maybe BufferObject)
 bindBufferBase t i = makeStateVar (getIndexedBufferBinding t i) (setIndexedBufferBase t i)
-
-setIndexedBufferBase :: IndexedBufferTarget -> BufferIndex -> Maybe BufferObject -> IO ()
-setIndexedBufferBase t i buf=
-   case marshalGetPName . marshalIndexedBufferTarget $ t of
-      Nothing -> recordInvalidEnum
-      Just t' ->
-         glBindBufferBase t' i . bufferID . fromMaybe noBufferObject $ buf
 
 getIndexedBufferBinding :: IndexedBufferTarget -> BufferIndex -> IO (Maybe BufferObject)
 getIndexedBufferBinding t i = do
    buf <- getInteger1i (BufferObject . fromIntegral) (marshalIndexedBufferTarget t) i
    return $ if buf == noBufferObject then Nothing else Just buf
 
+setIndexedBufferBase :: IndexedBufferTarget -> BufferIndex -> Maybe BufferObject -> IO ()
+setIndexedBufferBase t i buf =
+   case marshalGetPName . marshalIndexedBufferTarget $ t of
+      Nothing -> recordInvalidEnum
+      Just t' -> glBindBufferBase t' i . bufferID . fromMaybe noBufferObject $ buf
+
 bindBufferRange :: IndexedBufferTarget -> BufferIndex -> StateVar (Maybe BufferRange)
 bindBufferRange t i = makeStateVar (getIndexedBufferRange t i) (setIndexedBufferRange t i)
 
-setIndexedBufferRange :: IndexedBufferTarget -> BufferIndex -> Maybe BufferRange -> IO ()
-setIndexedBufferRange t i (Just (buf, start, range)) =
-   case marshalGetPName . marshalIndexedBufferTarget $ t of
-      Nothing -> recordInvalidEnum
-      Just t' -> glBindBufferRange t' i (bufferID buf) start range
-setIndexedBufferRange t i Nothing = setIndexedBufferBase t i Nothing
-
-getIndexedBufferRange :: IndexedBufferTarget -> BufferIndex -> IO(Maybe BufferRange)
+getIndexedBufferRange :: IndexedBufferTarget -> BufferIndex -> IO (Maybe BufferRange)
 getIndexedBufferRange t i = do
   buf <- getInteger1i (BufferObject . fromIntegral) (marshalIndexedBufferTarget t) i
   if buf == noBufferObject
      then return Nothing
-     else do
-        start <- get $ indexedBufferStart t i
-        size <- get $ indexedBufferSize t i
-        return $ Just (buf, start, size)
+     else do start <- get $ indexedBufferStart t i
+             size <- get $ indexedBufferSize t i
+             return $ Just (buf, start, size)
 
+setIndexedBufferRange :: IndexedBufferTarget -> BufferIndex -> Maybe BufferRange -> IO ()
+setIndexedBufferRange t i br =
+   case marshalGetPName . marshalIndexedBufferTarget $ t of
+      Nothing -> recordInvalidEnum
+      Just t' -> glBindBufferRange t' i (bufferID buf) start range
+   where (buf, start, range) = fromMaybe (noBufferObject, 0, 0) br
+
+getIndexed :: Num a => IPName1I -> BufferIndex -> GettableStateVar a
+getIndexed e i = makeGettableStateVar $ getInteger641i fromIntegral e i
+
+marshalIndexedBufferStart :: IndexedBufferTarget -> IPName1I
+marshalIndexedBufferStart x = case x of
+   IndexedAtomicCounterBuffer -> GetAtomicCounterBufferStart
+   IndexedShaderStorageBuffer -> GetShaderStorageBufferStart
+   IndexedTransformFeedbackBuffer -> GetTransformFeedbackBufferStart
+   IndexedUniformBuffer -> GetUniformBufferStart
 
 indexedBufferStart :: IndexedBufferTarget -> BufferIndex -> GettableStateVar RangeStartIndex
 indexedBufferStart = getIndexed . marshalIndexedBufferStart
+
+marshalIndexedBufferSize :: IndexedBufferTarget -> IPName1I
+marshalIndexedBufferSize x = case x of
+   IndexedAtomicCounterBuffer -> GetAtomicCounterBufferSize
+   IndexedShaderStorageBuffer -> GetShaderStorageBufferSize
+   IndexedTransformFeedbackBuffer -> GetTransformFeedbackBufferSize
+   IndexedUniformBuffer -> GetUniformBufferSize
 
 indexedBufferSize :: IndexedBufferTarget -> BufferIndex -> GettableStateVar RangeSize
 indexedBufferSize = getIndexed . marshalIndexedBufferSize

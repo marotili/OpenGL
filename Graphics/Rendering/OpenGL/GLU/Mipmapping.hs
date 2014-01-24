@@ -17,14 +17,12 @@ module Graphics.Rendering.OpenGL.GLU.Mipmapping (
 ) where
 
 import Graphics.Rendering.GLU.Raw
-import Graphics.Rendering.OpenGL.Raw.Core31
 import Graphics.Rendering.OpenGL.GL.CoordTrans ( Size(..) )
+import Graphics.Rendering.OpenGL.GL.Texturing.PixelInternalFormat
 import Graphics.Rendering.OpenGL.GL.PixelData ( PixelData, withPixelData )
-import Graphics.Rendering.OpenGL.GL.Texturing.PixelInternalFormat (
-   PixelInternalFormat, marshalPixelInternalFormat )
-import Graphics.Rendering.OpenGL.GL.Texturing.TextureTarget (
-   TextureTarget, marshalTextureTarget )
+import Graphics.Rendering.OpenGL.GL.Texturing.TextureTarget
 import Graphics.Rendering.OpenGL.GLU.ErrorsInternal ( recordInvalidValue )
+import Graphics.Rendering.OpenGL.Raw
 
 --------------------------------------------------------------------------------
 -- Section 3.1 (Image Scaling)
@@ -44,23 +42,23 @@ scaleImage (Size widthIn  heightIn)  pdIn (Size widthOut heightOut) pdOut =
 -- Missing for GLU 1.3: gluBuild3DMipmaps, gluBuild{1,2,3}DMipmapLevels
 
 build1DMipmaps ::
-   TextureTarget -> PixelInternalFormat -> GLsizei -> PixelData a -> IO ()
+   TextureTarget1D -> PixelInternalFormat -> GLsizei -> PixelData a -> IO ()
 build1DMipmaps target internalFormat height pd = do
    _ <- withPixelData pd $
       gluBuild1DMipmaps
-         (marshalTextureTarget target)
+         (marshalGettableTextureTarget target)
          (marshalPixelInternalFormat internalFormat)
          height
    return ()   -- TODO: Should we use the return value?
 
 --------------------------------------------------------------------------------
 
-build2DMipmaps :: TextureTarget -> PixelInternalFormat -> GLsizei -> GLsizei
+build2DMipmaps :: TextureTarget2D -> PixelInternalFormat -> GLsizei -> GLsizei
                -> PixelData a -> IO ()
 build2DMipmaps target internalFormat width height pd = do
    _ <- withPixelData pd $
       gluBuild2DMipmaps
-         (marshalTextureTarget target)
+         (marshalGettableTextureTarget target)
          (marshalPixelInternalFormat internalFormat)
          width height
    return ()   -- TODO: Should we use the return value?

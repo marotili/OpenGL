@@ -23,7 +23,7 @@ import Graphics.Rendering.OpenGL.GL.PeekPoke
 import Graphics.Rendering.OpenGL.GL.StateVar
 import Graphics.Rendering.OpenGL.GL.Texturing.Specification
 import Graphics.Rendering.OpenGL.GL.Texturing.TextureTarget
-import Graphics.Rendering.OpenGL.Raw.Core31
+import Graphics.Rendering.OpenGL.Raw
 
 -----------------------------------------------------------------------------
 
@@ -66,8 +66,9 @@ instance PixellikeObjectTarget FramebufferTargetAttachment where
    pixObjTarQueryFunc (FramebufferTargetAttachment fbt fba) =
       getFBAParameteriv fbt fba id
 
-data TextureTargetFull = TextureTargetFull (Either TextureTarget CubeMapTarget) Level
-instance PixellikeObjectTarget TextureTargetFull where
+data TextureTargetFull t = TextureTargetFull t Level
+
+instance QueryableTextureTarget t => PixellikeObjectTarget (TextureTargetFull t) where
    marshalPixellikeOT _ x = case x of
       RedSize -> gl_TEXTURE_RED_SIZE
       BlueSize -> gl_TEXTURE_BLUE_SIZE
@@ -77,6 +78,5 @@ instance PixellikeObjectTarget TextureTargetFull where
       StencilSize -> gl_TEXTURE_STENCIL_SIZE
    pixObjTarQueryFunc (TextureTargetFull t level) p =
       alloca $ \buf -> do
-      glGetTexLevelParameteriv (marshalTarget t) level p buf
+      glGetTexLevelParameteriv (marshalQueryableTextureTarget t) level p buf
       peek1 id buf
-        where marshalTarget = either marshalTextureTarget marshalCubeMapTarget

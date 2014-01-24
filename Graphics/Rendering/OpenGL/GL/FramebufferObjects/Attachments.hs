@@ -29,7 +29,7 @@ import Graphics.Rendering.OpenGL.GL.Texturing.Specification
 import Graphics.Rendering.OpenGL.GL.Texturing.TextureObject
 import Graphics.Rendering.OpenGL.GL.Texturing.TextureTarget
 import Graphics.Rendering.OpenGL.GLU.ErrorsInternal
-import Graphics.Rendering.OpenGL.Raw.Core31
+import Graphics.Rendering.OpenGL.Raw
 
 -----------------------------------------------------------------------------
 
@@ -40,23 +40,25 @@ framebufferRenderbuffer fbt fba rbt (RenderbufferObject rboi) =
       mfba (marshalRenderbufferTarget rbt) rboi) $ marshalFramebufferObjectAttachment fba
 
 framebufferTexture1D :: FramebufferTarget -> FramebufferObjectAttachment
-   -> TextureObject -> Level -> IO ()
-framebufferTexture1D fbt fba (TextureObject t) l  =  maybe recordInvalidValue
+   -> TextureTarget1D -> TextureObject -> Level -> IO ()
+framebufferTexture1D fbt fba tt (TextureObject t) l  =  maybe recordInvalidValue
    (\mfba -> glFramebufferTexture1D (marshalFramebufferTarget fbt) mfba
-      (marshalTextureTarget Texture1D) t l) $ marshalFramebufferObjectAttachment fba
+      (marshalQueryableTextureTarget tt) t l) $ marshalFramebufferObjectAttachment fba
 
+-- Note: Typing is too permissive, no TEXTURE_1D_ARRAY allowed per 4.4. spec.
 framebufferTexture2D :: FramebufferTarget -> FramebufferObjectAttachment
-   -> Maybe CubeMapTarget-> TextureObject -> Level -> IO ()
-framebufferTexture2D fbt fba mcmt (TextureObject t) l = maybe recordInvalidValue
+   -> TextureTarget2D -> TextureObject -> Level -> IO ()
+framebufferTexture2D fbt fba tt (TextureObject t) l = maybe recordInvalidValue
    (\mfba -> glFramebufferTexture2D (marshalFramebufferTarget fbt) mfba
-      (maybe (marshalTextureTarget Texture2D) marshalCubeMapTarget mcmt) t l)
+      (marshalQueryableTextureTarget tt) t l)
          $ marshalFramebufferObjectAttachment fba
 
+-- Note: Typing is too permissive, no TEXTURE_2D_ARRAY or TEXTURE_2D_MULTISAMPLE_ARRAY allowed per 4.4. spec.
 framebufferTexture3D :: FramebufferTarget -> FramebufferObjectAttachment
-   -> TextureObject -> Level -> GLint -> IO ()
-framebufferTexture3D fbt fba (TextureObject t) le la = maybe recordInvalidValue
+   -> TextureTarget3D -> TextureObject -> Level -> GLint -> IO ()
+framebufferTexture3D fbt fba tt (TextureObject t) le la = maybe recordInvalidValue
    (\mfba -> glFramebufferTexture3D (marshalFramebufferTarget fbt) mfba
-      (marshalTextureTarget Texture1D) t le la) $ marshalFramebufferObjectAttachment fba
+      (marshalQueryableTextureTarget tt) t le la) $ marshalFramebufferObjectAttachment fba
 
 framebufferTextureLayer :: FramebufferTarget -> FramebufferObjectAttachment
    -> TextureObject -> Level -> GLint -> IO()

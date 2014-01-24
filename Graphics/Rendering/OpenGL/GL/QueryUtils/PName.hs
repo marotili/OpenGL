@@ -37,28 +37,7 @@ import Foreign.Ptr
 import Foreign.Storable
 import Graphics.Rendering.OpenGL.GL.PeekPoke
 import Graphics.Rendering.OpenGL.GLU.ErrorsInternal
-import Graphics.Rendering.OpenGL.Raw.ARB.Compatibility
-import Graphics.Rendering.OpenGL.Raw.ARB.ComputeShader
-import Graphics.Rendering.OpenGL.Raw.ARB.DrawIndirect
-import Graphics.Rendering.OpenGL.Raw.ARB.ES2Compatibility
-import Graphics.Rendering.OpenGL.Raw.ARB.FragmentProgram
-import Graphics.Rendering.OpenGL.Raw.ARB.GetProgramBinary
-import Graphics.Rendering.OpenGL.Raw.ARB.MatrixPalette
-import Graphics.Rendering.OpenGL.Raw.ARB.QueryBufferObject
-import Graphics.Rendering.OpenGL.Raw.ARB.ShaderAtomicCounters
-import Graphics.Rendering.OpenGL.Raw.ARB.ShaderStorageBufferObject
-import Graphics.Rendering.OpenGL.Raw.ARB.TimerQuery
-import Graphics.Rendering.OpenGL.Raw.ARB.TransformFeedback3
-import Graphics.Rendering.OpenGL.Raw.Core32
-import Graphics.Rendering.OpenGL.Raw.EXT.Cmyka
-import Graphics.Rendering.OpenGL.Raw.EXT.CompiledVertexArray
-import Graphics.Rendering.OpenGL.Raw.EXT.DepthBoundsTest
-import Graphics.Rendering.OpenGL.Raw.EXT.PackedFloat
-import Graphics.Rendering.OpenGL.Raw.EXT.StencilTwoSide
-import Graphics.Rendering.OpenGL.Raw.EXT.TextureFilterAnisotropic
-import Graphics.Rendering.OpenGL.Raw.NV.FogDistance
-import Graphics.Rendering.OpenGL.Raw.NV.LightMaxExponent
-import Graphics.Rendering.OpenGL.Raw.NV.PrimitiveRestart
+import Graphics.Rendering.OpenGL.Raw
 
 -----------------------------------------------------------------------------
 
@@ -89,6 +68,9 @@ getBooleaniv p i = makeGetter (\e -> glGetBooleani_v e i) p
 
 getIntegeriv :: GetPName p => p -> GLuint -> Ptr GLint -> IO ()
 getIntegeriv p i =  makeGetter (\e -> glGetIntegeri_v e i) p
+
+getInteger64iv :: GetPName p => p -> GLuint -> Ptr GLint64 -> IO ()
+getInteger64iv p i =  makeGetter (\e -> glGetInteger64i_v e i) p
 
 -----------------------------------------------------------------------------
 
@@ -148,6 +130,9 @@ class GetPName p => GetIPName1I p where
 
     getSizei1i :: (GLsizei -> a) -> p -> GLuint -> IO a
     getSizei1i = get1i getIntegeriv
+
+    getInteger641i :: (GLint64 -> a) -> p -> GLuint -> IO a
+    getInteger641i = get1i getInteger64iv
 
 -- Indexed helper
 get1i :: (Storable b, Storable c, GetPName p)
@@ -434,7 +419,6 @@ data PName1I
     | GetPixelUnpackBufferBinding   -- ^ int
     | GetQueryBufferBinding         -- ^ int
     | GetShaderStorageBufferBinding -- ^ int
-    | GetTextureBindingBuffer       -- ^ int
     | GetTransformFeedbackBufferBinding -- ^ int
     | GetUniformBufferBinding       -- ^ int
 
@@ -532,14 +516,25 @@ data PName1I
     | GetMax3DTextureSize               -- ^ int
     | GetMaxCubeMapTextureSize          -- ^ int
     | GetMaxRectangleTextureSize        -- ^ int
+    | GetMaxArrayTextureLayers          -- ^ int
+    | GetMaxSampleMaskWords             -- ^ int
+    | GetMaxColorTextureSamples         -- ^ int
+    | GetMaxDepthTextureSamples         -- ^ int
+    | GetMaxIntegerSamples              -- ^ int
     -- ReadCopyPixels
     | GetReadBuffer                 -- ^ enum
     -- Texture Objects
     | GetTextureBinding1D           -- ^ int\/enum
     | GetTextureBinding2D           -- ^ int\/enum
     | GetTextureBinding3D           -- ^ int\/enum
-    | GetTextureBindingCubeMap      -- ^ int\/enum
+    | GetTextureBinding1DArray      -- ^ int\/enum
+    | GetTextureBinding2DArray      -- ^ int\/enum
+    | GetTextureBindingCubeMapArray -- ^ int\/enum
     | GetTextureBindingRectangle    -- ^ int\/enum
+    | GetTextureBindingBuffer       -- ^ int\/enum
+    | GetTextureBindingCubeMap      -- ^ int\/enum
+    | GetTextureBinding2DMultisample -- ^ int\/enum
+    | GetTextureBinding2DMultisampleArray -- ^ int\/enum
     -- Antialiasing
     | GetSubpixelBits               -- ^ sizei
     | GetSamples                    -- ^ sizei
@@ -683,7 +678,6 @@ instance GetPName PName1I where
         GetPixelUnpackBufferBinding -> Just gl_PIXEL_UNPACK_BUFFER_BINDING
         GetQueryBufferBinding -> Just gl_QUERY_BUFFER_BINDING
         GetShaderStorageBufferBinding -> Just gl_SHADER_STORAGE_BUFFER_BINDING
-        GetTextureBindingBuffer -> Just gl_TEXTURE_BINDING_BUFFER
         GetTransformFeedbackBufferBinding -> Just gl_TRANSFORM_FEEDBACK_BUFFER_BINDING
         GetUniformBufferBinding -> Just gl_UNIFORM_BUFFER_BINDING
 
@@ -782,14 +776,25 @@ instance GetPName PName1I where
         GetMax3DTextureSize -> Just gl_MAX_3D_TEXTURE_SIZE
         GetMaxCubeMapTextureSize -> Just gl_MAX_CUBE_MAP_TEXTURE_SIZE
         GetMaxRectangleTextureSize -> Just gl_MAX_RECTANGLE_TEXTURE_SIZE
+        GetMaxArrayTextureLayers -> Just gl_MAX_ARRAY_TEXTURE_LAYERS
+        GetMaxSampleMaskWords -> Just gl_MAX_SAMPLE_MASK_WORDS
+        GetMaxColorTextureSamples -> Just gl_MAX_COLOR_TEXTURE_SAMPLES
+        GetMaxDepthTextureSamples -> Just gl_MAX_DEPTH_TEXTURE_SAMPLES
+        GetMaxIntegerSamples -> Just gl_MAX_INTEGER_SAMPLES
         -- ReadCopyPixels
         GetReadBuffer -> Just gl_READ_BUFFER
         -- Texture Objects
         GetTextureBinding1D -> Just gl_TEXTURE_BINDING_1D
         GetTextureBinding2D -> Just gl_TEXTURE_BINDING_2D
         GetTextureBinding3D -> Just gl_TEXTURE_BINDING_3D
-        GetTextureBindingCubeMap -> Just gl_TEXTURE_BINDING_CUBE_MAP
+        GetTextureBinding1DArray -> Just gl_TEXTURE_BINDING_1D_ARRAY
+        GetTextureBinding2DArray -> Just gl_TEXTURE_BINDING_2D_ARRAY
+        GetTextureBindingCubeMapArray -> Just gl_TEXTURE_BINDING_CUBE_MAP_ARRAY
         GetTextureBindingRectangle -> Just gl_TEXTURE_BINDING_RECTANGLE
+        GetTextureBindingBuffer -> Just gl_TEXTURE_BINDING_BUFFER
+        GetTextureBindingCubeMap -> Just gl_TEXTURE_BINDING_CUBE_MAP
+        GetTextureBinding2DMultisample -> Just gl_TEXTURE_BINDING_2D_MULTISAMPLE
+        GetTextureBinding2DMultisampleArray -> Just gl_TEXTURE_BINDING_2D_MULTISAMPLE_ARRAY
         -- Antialiasing
         GetSubpixelBits -> Just gl_SUBPIXEL_BITS
         GetSampleBuffers -> Just gl_SAMPLE_BUFFERS
@@ -949,18 +954,36 @@ instance GetPName PName1F where
 
 -----------------------------------------------------------------------------
 
-data IPName1I
-    =  GetTransformFeedbackBuffer
+data IPName1I =
+      GetAtomicCounterBuffer
+    | GetAtomicCounterBufferStart
+    | GetAtomicCounterBufferSize
+    | GetShaderStorageBuffer
+    | GetShaderStorageBufferStart
+    | GetShaderStorageBufferSize
+    | GetTransformFeedbackBuffer
     | GetTransformFeedbackBufferStart
     | GetTransformFeedbackBufferSize
+    | GetUniformBuffer
+    | GetUniformBufferStart
+    | GetUniformBufferSize
 
 instance GetIPName1I IPName1I where
 
 instance GetPName IPName1I where
     marshalGetPName pn = case pn of
+        GetAtomicCounterBuffer -> Just gl_ATOMIC_COUNTER_BUFFER
+        GetAtomicCounterBufferStart -> Just gl_ATOMIC_COUNTER_BUFFER_START
+        GetAtomicCounterBufferSize -> Just gl_ATOMIC_COUNTER_BUFFER_SIZE
+        GetShaderStorageBuffer -> Just gl_SHADER_STORAGE_BUFFER
+        GetShaderStorageBufferStart -> Just gl_SHADER_STORAGE_BUFFER_START
+        GetShaderStorageBufferSize -> Just gl_SHADER_STORAGE_BUFFER_SIZE
         GetTransformFeedbackBuffer -> Just gl_TRANSFORM_FEEDBACK_BUFFER
-        GetTransformFeedbackBufferSize -> Just gl_TRANSFORM_FEEDBACK_BUFFER_SIZE
         GetTransformFeedbackBufferStart -> Just gl_TRANSFORM_FEEDBACK_BUFFER_START
+        GetTransformFeedbackBufferSize -> Just gl_TRANSFORM_FEEDBACK_BUFFER_SIZE
+        GetUniformBuffer -> Just gl_UNIFORM_BUFFER
+        GetUniformBufferStart -> Just gl_UNIFORM_BUFFER_START
+        GetUniformBufferSize -> Just gl_UNIFORM_BUFFER_SIZE
 
 -----------------------------------------------------------------------------
 
@@ -1059,6 +1082,7 @@ data PName4ISemiIndexed
     = GetColorWritemask         -- ^ bool
 
 instance GetPName4I  PName4ISemiIndexed where
+
 instance GetIPName4I PName4ISemiIndexed where
 
 instance GetPName PName4ISemiIndexed where
@@ -1130,6 +1154,7 @@ data PNameNI
     | GetProgramBinaryFormats
 
 instance GetPNameNI PNameNI where
+
 instance GetPName   PNameNI where
    marshalGetPName pn = case pn of
       GetCompressedTextureFormats -> Just gl_COMPRESSED_TEXTURE_FORMATS

@@ -25,29 +25,7 @@ import Graphics.Rendering.OpenGL.GL.StateVar
 import Graphics.Rendering.OpenGL.GL.GLboolean
 import Graphics.Rendering.OpenGL.GL.QueryUtils
 import Graphics.Rendering.OpenGL.GLU.ErrorsInternal
-import Graphics.Rendering.OpenGL.Raw.ARB.Compatibility (
-   gl_ALPHA_TEST, gl_AUTO_NORMAL, gl_COLOR_ARRAY, gl_COLOR_MATERIAL,
-   gl_COLOR_SUM, gl_COLOR_TABLE, gl_CONVOLUTION_1D, gl_CONVOLUTION_2D,
-   gl_EDGE_FLAG_ARRAY, gl_FOG, gl_FOG_COORD_ARRAY, gl_HISTOGRAM, gl_INDEX_ARRAY,
-   gl_INDEX_LOGIC_OP, gl_LIGHTING, gl_LINE_STIPPLE, gl_MAP1_COLOR_4,
-   gl_MAP1_INDEX, gl_MAP1_NORMAL, gl_MAP1_TEXTURE_COORD_1,
-   gl_MAP1_TEXTURE_COORD_2, gl_MAP1_TEXTURE_COORD_3, gl_MAP1_TEXTURE_COORD_4,
-   gl_MAP1_VERTEX_3, gl_MAP1_VERTEX_4, gl_MAP2_COLOR_4, gl_MAP2_INDEX,
-   gl_MAP2_NORMAL, gl_MAP2_TEXTURE_COORD_1, gl_MAP2_TEXTURE_COORD_2,
-   gl_MAP2_TEXTURE_COORD_3, gl_MAP2_TEXTURE_COORD_4, gl_MAP2_VERTEX_3,
-   gl_MAP2_VERTEX_4, gl_MINMAX, gl_NORMALIZE, gl_NORMAL_ARRAY, gl_POINT_SMOOTH,
-   gl_POINT_SPRITE, gl_POLYGON_STIPPLE, gl_POST_COLOR_MATRIX_COLOR_TABLE,
-   gl_POST_CONVOLUTION_COLOR_TABLE, gl_RESCALE_NORMAL, gl_SECONDARY_COLOR_ARRAY,
-   gl_SEPARABLE_2D, gl_TEXTURE_COORD_ARRAY, gl_TEXTURE_GEN_Q, gl_TEXTURE_GEN_R,
-   gl_TEXTURE_GEN_S, gl_TEXTURE_GEN_T, gl_VERTEX_ARRAY,
-   gl_VERTEX_PROGRAM_TWO_SIDE )
-import Graphics.Rendering.OpenGL.Raw.ARB.MatrixPalette ( gl_MATRIX_INDEX_ARRAY, gl_MATRIX_PALETTE )
-import Graphics.Rendering.OpenGL.Raw.ARB.VertexBlend ( gl_WEIGHT_SUM_UNITY, gl_VERTEX_BLEND, gl_WEIGHT_ARRAY )
-import Graphics.Rendering.OpenGL.Raw.Core31
-import Graphics.Rendering.OpenGL.Raw.EXT.DepthBoundsTest ( gl_DEPTH_BOUNDS_TEST )
-import Graphics.Rendering.OpenGL.Raw.EXT.SharedTexturePalette ( gl_SHARED_TEXTURE_PALETTE )
-import Graphics.Rendering.OpenGL.Raw.EXT.StencilTwoSide ( gl_STENCIL_TEST_TWO_SIDE )
-import Graphics.Rendering.OpenGL.Raw.NV.DepthClamp ( gl_DEPTH_CLAMP )
+import Graphics.Rendering.OpenGL.Raw
 
 --------------------------------------------------------------------------------
 
@@ -71,7 +49,14 @@ data EnableCap =
    | CapLighting
    | CapTexture1D
    | CapTexture2D
+   | CapTexture2DMultisample
+   | CapTexture1DArray
    | CapTextureRectangle
+   | CapTextureCubeMap
+   | CapTexture3D
+   | CapTexture2DArray
+   | CapTexture2DMultisampleArray
+   | CapTextureCubeMapArray
    | CapLineStipple
    | CapPolygonStipple
    | CapCullFace
@@ -132,7 +117,6 @@ data EnableCap =
    | CapMinmax
    | CapRescaleNormal
    | CapSharedTexturePalette
-   | CapTexture3D
    | CapMultisample
    | CapSampleAlphaToCoverage
    | CapSampleAlphaToOne
@@ -141,7 +125,6 @@ data EnableCap =
    | CapPostConvolutionColorTable
    | CapPostColorMatrixColorTable
    | CapColorSum
-   | CapTextureCubeMap
    | CapWeightSumUnity
    | CapVertexBlend
    | CapWeightArray
@@ -163,7 +146,14 @@ marshalEnableCap x = case x of
    CapLighting -> Just gl_LIGHTING
    CapTexture1D -> Just gl_TEXTURE_1D
    CapTexture2D -> Just gl_TEXTURE_2D
+   CapTexture2DMultisample -> Just gl_TEXTURE_2D_MULTISAMPLE
+   CapTexture1DArray -> Just gl_TEXTURE_1D_ARRAY
    CapTextureRectangle -> Just gl_TEXTURE_RECTANGLE
+   CapTextureCubeMap -> Just gl_TEXTURE_CUBE_MAP
+   CapTexture3D -> Just gl_TEXTURE_3D
+   CapTexture2DArray -> Just gl_TEXTURE_2D_ARRAY
+   CapTexture2DMultisampleArray -> Just gl_TEXTURE_2D_MULTISAMPLE_ARRAY
+   CapTextureCubeMapArray -> Just gl_TEXTURE_CUBE_MAP_ARRAY
    CapLineStipple -> Just gl_LINE_STIPPLE
    CapPolygonStipple -> Just gl_POLYGON_STIPPLE
    CapCullFace -> Just gl_CULL_FACE
@@ -224,7 +214,6 @@ marshalEnableCap x = case x of
    CapMinmax -> Just gl_MINMAX
    CapRescaleNormal -> Just gl_RESCALE_NORMAL
    CapSharedTexturePalette -> Just gl_SHARED_TEXTURE_PALETTE
-   CapTexture3D -> Just gl_TEXTURE_3D
    CapMultisample -> Just gl_MULTISAMPLE
    CapSampleAlphaToCoverage -> Just gl_SAMPLE_ALPHA_TO_COVERAGE
    CapSampleAlphaToOne -> Just gl_SAMPLE_ALPHA_TO_ONE
@@ -233,7 +222,6 @@ marshalEnableCap x = case x of
    CapPostConvolutionColorTable -> Just gl_POST_CONVOLUTION_COLOR_TABLE
    CapPostColorMatrixColorTable -> Just gl_POST_COLOR_MATRIX_COLOR_TABLE
    CapColorSum -> Just gl_COLOR_SUM
-   CapTextureCubeMap -> Just gl_TEXTURE_CUBE_MAP
    CapWeightSumUnity -> Just gl_WEIGHT_SUM_UNITY
    CapVertexBlend -> Just gl_VERTEX_BLEND
    CapWeightArray -> Just gl_WEIGHT_ARRAY

@@ -23,25 +23,23 @@ module Graphics.Rendering.OpenGL.GL.Texturing.Parameters (
    textureCompareFailValue, TextureCompareOperator(..), textureCompareOperator
 ) where
 
-import Graphics.Rendering.OpenGL.GL.StateVar
+import Control.Monad
 import Graphics.Rendering.OpenGL.GL.Capability
 import Graphics.Rendering.OpenGL.GL.ComparisonFunction
 import Graphics.Rendering.OpenGL.GL.CoordTrans
 import Graphics.Rendering.OpenGL.GL.QueryUtils
+import Graphics.Rendering.OpenGL.GL.StateVar
 import Graphics.Rendering.OpenGL.GL.Texturing.Filter
 import Graphics.Rendering.OpenGL.GL.Texturing.PixelInternalFormat
 import Graphics.Rendering.OpenGL.GL.Texturing.Specification
 import Graphics.Rendering.OpenGL.GL.Texturing.TexParameter
 import Graphics.Rendering.OpenGL.GL.VertexSpec
 import Graphics.Rendering.OpenGL.GLU.ErrorsInternal
-import Graphics.Rendering.OpenGL.Raw.ARB.Compatibility ( gl_CLAMP )
-import Graphics.Rendering.OpenGL.Raw.Core31
-import Graphics.Rendering.OpenGL.Raw.EXT.TextureMirrorClamp (
-   gl_MIRROR_CLAMP, gl_MIRROR_CLAMP_TO_BORDER, gl_MIRROR_CLAMP_TO_EDGE )
+import Graphics.Rendering.OpenGL.Raw
 
 --------------------------------------------------------------------------------
 
-textureFilter :: TextureTarget -> StateVar (MinificationFilter, MagnificationFilter)
+textureFilter :: ParameterizedTextureTarget t => t -> StateVar (MinificationFilter, MagnificationFilter)
 textureFilter =
    combineTexParams
       (texParami unmarshalMinificationFilter  marshalMinificationFilter  TextureMinFilter)
@@ -87,7 +85,7 @@ unmarshalTextureWrapMode x
 
 --------------------------------------------------------------------------------
 
-textureWrapMode :: TextureTarget -> TextureCoordName -> StateVar (Repetition,Clamping)
+textureWrapMode :: ParameterizedTextureTarget t => t -> TextureCoordName -> StateVar (Repetition,Clamping)
 textureWrapMode t coord = case coord of
    S -> wrap TextureWrapS
    T -> wrap TextureWrapT
@@ -103,21 +101,21 @@ invalidTextureCoord =
 
 --------------------------------------------------------------------------------
 
-textureBorderColor :: TextureTarget -> StateVar (Color4 GLfloat)
+textureBorderColor :: ParameterizedTextureTarget t => t -> StateVar (Color4 GLfloat)
 textureBorderColor = texParamC4f TextureBorderColor
 
 --------------------------------------------------------------------------------
 
 type LOD = GLfloat
 
-textureObjectLODBias :: TextureTarget -> StateVar LOD
+textureObjectLODBias :: ParameterizedTextureTarget t => t -> StateVar LOD
 textureObjectLODBias = texParamf id id TextureLODBias
 
 maxTextureLODBias :: GettableStateVar LOD
 maxTextureLODBias =
    makeGettableStateVar (getFloat1 id GetMaxTextureLODBias)
 
-textureLODRange :: TextureTarget -> StateVar (LOD,LOD)
+textureLODRange :: ParameterizedTextureTarget t => t -> StateVar (LOD,LOD)
 textureLODRange =
    combineTexParams
       (texParamf id id TextureMinLOD)
@@ -125,7 +123,7 @@ textureLODRange =
 
 --------------------------------------------------------------------------------
 
-textureMaxAnisotropy :: TextureTarget -> StateVar GLfloat
+textureMaxAnisotropy :: ParameterizedTextureTarget t => t -> StateVar GLfloat
 textureMaxAnisotropy = texParamf id id TextureMaxAnisotropy
 
 maxTextureMaxAnisotropy :: GettableStateVar GLfloat
@@ -134,7 +132,7 @@ maxTextureMaxAnisotropy =
 
 --------------------------------------------------------------------------------
 
-textureLevelRange :: TextureTarget -> StateVar (Level,Level)
+textureLevelRange :: ParameterizedTextureTarget t => t -> StateVar (Level,Level)
 textureLevelRange =
    combineTexParams
       (texParami id id TextureBaseLevel)
@@ -142,7 +140,10 @@ textureLevelRange =
 
 --------------------------------------------------------------------------------
 
-generateMipmap :: TextureTarget -> StateVar Capability
+-- | Note: OpenGL 3.1 deprecated this texture parameter, use
+-- 'Graphics.Rendering.OpenGL.GL.Texturing.Objects.generateMipmap'' instead.
+
+generateMipmap :: ParameterizedTextureTarget t => t -> StateVar Capability
 generateMipmap = texParami unmarshal marshal GenerateMipmap
    where unmarshal = unmarshalCapability . fromIntegral
          marshal = fromIntegral . marshalCapability
@@ -150,7 +151,7 @@ generateMipmap = texParami unmarshal marshal GenerateMipmap
 --------------------------------------------------------------------------------
 
 -- Only Luminance', Intensity, and Alpha' allowed
-depthTextureMode :: TextureTarget -> StateVar PixelInternalFormat
+depthTextureMode :: ParameterizedTextureTarget t => t -> StateVar PixelInternalFormat
 depthTextureMode =
    texParami unmarshalPixelInternalFormat marshalPixelInternalFormat DepthTextureMode
 
@@ -170,7 +171,7 @@ unmarshalTextureCompareMode x
 
 --------------------------------------------------------------------------------
 
-textureCompareMode :: TextureTarget -> StateVar (Maybe ComparisonFunction)
+textureCompareMode :: ParameterizedTextureTarget t => t -> StateVar (Maybe ComparisonFunction)
 textureCompareMode =
    combineTexParamsMaybe
       (texParami unmarshalTextureCompareMode marshalTextureCompareMode TextureCompareMode)
@@ -180,7 +181,7 @@ textureCompareMode =
 
 --------------------------------------------------------------------------------
 
-textureCompareFailValue :: TextureTarget -> StateVar GLclampf
+textureCompareFailValue :: ParameterizedTextureTarget t => t -> StateVar GLclampf
 textureCompareFailValue = texParamf realToFrac realToFrac TextureCompareFailValue
 
 --------------------------------------------------------------------------------
@@ -203,8 +204,33 @@ unmarshalTextureCompareOperator x
 
 --------------------------------------------------------------------------------
 
-textureCompareOperator :: TextureTarget -> StateVar (Maybe TextureCompareOperator)
+textureCompareOperator :: ParameterizedTextureTarget t => t -> StateVar (Maybe TextureCompareOperator)
 textureCompareOperator =
    combineTexParamsMaybe
       (texParami (unmarshalCapability . fromIntegral) (fromIntegral. marshalCapability) TextureCompare)
       (texParami unmarshalTextureCompareOperator marshalTextureCompareOperator TextureCompareOperator)
+
+--------------------------------------------------------------------------------
+
+combineTexParams :: ParameterizedTextureTarget t
+                 => (t -> StateVar a)
+                 -> (t -> StateVar b)
+                 -> (t -> StateVar (a,b))
+combineTexParams v w t =
+   makeStateVar
+      (liftM2 (,) (get (v t)) (get (w t)))
+      (\(x,y) -> do v t $= x; w t $= y)
+
+combineTexParamsMaybe :: ParameterizedTextureTarget t
+                      => (t -> StateVar Capability)
+                      -> (t -> StateVar a)
+                      -> (t -> StateVar (Maybe a))
+combineTexParamsMaybe enab val t =
+   makeStateVar
+      (do tcm <- get (enab t)
+          case tcm of
+             Disabled -> return Nothing
+             Enabled -> fmap Just $ get (val t))
+      (maybe (enab t $= Disabled)
+             (\tcf -> do val t $= tcf
+                         enab t $= Enabled))

@@ -14,9 +14,10 @@
 --------------------------------------------------------------------------------
 
 module Graphics.Rendering.OpenGL.GL.Texturing.Objects (
-   TextureObject, textureBinding,
+   TextureObject(TextureObject), textureBinding,
    textureResident, areTexturesResident,
-   TexturePriority, texturePriority, prioritizeTextures
+   TexturePriority, texturePriority, prioritizeTextures,
+   generateMipmap'
 ) where
 
 import Data.List
@@ -28,33 +29,23 @@ import Graphics.Rendering.OpenGL.GL.StateVar
 import Graphics.Rendering.OpenGL.GL.Texturing.TexParameter
 import Graphics.Rendering.OpenGL.GL.Texturing.TextureObject
 import Graphics.Rendering.OpenGL.GL.Texturing.TextureTarget
-import Graphics.Rendering.OpenGL.Raw.ARB.Compatibility (
-   glAreTexturesResident, glPrioritizeTextures )
-import Graphics.Rendering.OpenGL.Raw.Core31
+import Graphics.Rendering.OpenGL.Raw
 
 --------------------------------------------------------------------------------
 
-textureBinding :: TextureTarget -> StateVar (Maybe TextureObject)
+textureBinding :: BindableTextureTarget t => t -> StateVar (Maybe TextureObject)
 textureBinding t =
    makeStateVar
-      (do o <- getEnum1 (TextureObject . fromIntegral) (textureTargetToGetPName t)
+      (do o <- getEnum1 (TextureObject . fromIntegral) (marshalBindableTextureTargetPName1I t)
           return $ if o == defaultTextureObject then Nothing else Just o)
-      (glBindTexture (marshalTextureTarget t) . textureID . (fromMaybe defaultTextureObject))
+      (glBindTexture (marshalBindableTextureTarget t) . textureID . (fromMaybe defaultTextureObject))
 
 defaultTextureObject :: TextureObject
 defaultTextureObject = TextureObject 0
 
-textureTargetToGetPName :: TextureTarget -> PName1I
-textureTargetToGetPName x = case x of
-    Texture1D -> GetTextureBinding1D
-    Texture2D -> GetTextureBinding2D
-    Texture3D -> GetTextureBinding3D
-    TextureCubeMap -> GetTextureBindingCubeMap
-    TextureRectangle -> GetTextureBindingRectangle
-
 --------------------------------------------------------------------------------
 
-textureResident :: TextureTarget -> GettableStateVar Bool
+textureResident :: ParameterizedTextureTarget t => t -> GettableStateVar Bool
 textureResident t =
    makeGettableStateVar $
       getTexParameteri unmarshalGLboolean t TextureResident
@@ -76,7 +67,7 @@ areTexturesResident texObjs = do
 
 type TexturePriority = GLclampf
 
-texturePriority :: TextureTarget -> StateVar TexturePriority
+texturePriority :: ParameterizedTextureTarget t => t -> StateVar TexturePriority
 texturePriority = texParamf realToFrac realToFrac TexturePriority
 
 prioritizeTextures :: [(TextureObject,TexturePriority)] -> IO ()
@@ -84,3 +75,12 @@ prioritizeTextures tps =
    withArrayLen (map (textureID . fst) tps) $ \len texObjsBuf ->
       withArray (map snd tps) $
          glPrioritizeTextures (fromIntegral len) texObjsBuf
+
+--------------------------------------------------------------------------------
+
+-- | Generate mipmaps for the specified texture target. Note that from OpenGL
+-- 3.1 onwards you should use this function instead of the texture parameter
+-- 'Graphics.Rendering.OpenGL.GL.Texturing.Parameters.generateMipmap'.
+
+generateMipmap' :: ParameterizedTextureTarget t => t -> IO ()
+generateMipmap' = glGenerateMipmap . marshalParameterizedTextureTarget

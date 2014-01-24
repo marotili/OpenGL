@@ -21,19 +21,15 @@ module Graphics.Rendering.OpenGL.GL.Texturing.Queries (
 
 import Control.Monad
 import Foreign.Marshal.Alloc
-import Graphics.Rendering.OpenGL.GL.StateVar
 import Graphics.Rendering.OpenGL.GL.GLboolean
 import Graphics.Rendering.OpenGL.GL.PeekPoke
 import Graphics.Rendering.OpenGL.GL.PixelRectangles
+import Graphics.Rendering.OpenGL.GL.StateVar
 import Graphics.Rendering.OpenGL.GL.Texturing.PixelInternalFormat
 import Graphics.Rendering.OpenGL.GL.Texturing.Specification
 import Graphics.Rendering.OpenGL.GL.Texturing.TextureTarget
 import Graphics.Rendering.OpenGL.GL.VertexSpec
-import Graphics.Rendering.OpenGL.Raw.ARB.Compatibility (
-   gl_TEXTURE_INTENSITY_SIZE, gl_TEXTURE_LUMINANCE_SIZE, gl_DEPTH_BITS )
-import Graphics.Rendering.OpenGL.Raw.Core31
-import Graphics.Rendering.OpenGL.Raw.EXT.PalettedTexture (
-   gl_TEXTURE_INDEX_SIZE )
+import Graphics.Rendering.OpenGL.Raw
 
 --------------------------------------------------------------------------------
 
@@ -76,87 +72,91 @@ marshalTexLevelParameter x = case x of
 
 --------------------------------------------------------------------------------
 
-type TextureQuery a = Either TextureTarget CubeMapTarget -> Level -> GettableStateVar a
+type TextureQuery t a = t -> Level -> GettableStateVar a
 
-textureInternalFormat :: TextureQuery PixelInternalFormat
+textureInternalFormat :: QueryableTextureTarget t => TextureQuery t PixelInternalFormat
 textureInternalFormat t level =
    makeGettableStateVar $
-      getTexLevelParameteri unmarshalPixelInternalFormat NoProxy t level TextureInternalFormat
+      getTexLevelParameteriNoProxy unmarshalPixelInternalFormat t level TextureInternalFormat
 
-textureSize1D :: TextureQuery TextureSize1D
+textureSize1D :: TextureQuery TextureTarget1D TextureSize1D
 textureSize1D t level =
    makeGettableStateVar $
-      getTexLevelParameteri (TextureSize1D . fromIntegral) NoProxy t level TextureWidth
+      liftM TextureSize1D
+            (getTexLevelParameteriNoProxy fromIntegral t level TextureWidth)
 
-textureSize2D :: TextureQuery TextureSize2D
+textureSize2D :: TextureQuery TextureTarget2D TextureSize2D
 textureSize2D t level =
    makeGettableStateVar $
       liftM2 TextureSize2D
-             (getTexLevelParameteri fromIntegral NoProxy t level TextureWidth )
-             (getTexLevelParameteri fromIntegral NoProxy t level TextureHeight)
+             (getTexLevelParameteriNoProxy fromIntegral t level TextureWidth )
+             (getTexLevelParameteriNoProxy fromIntegral t level TextureHeight)
 
-textureSize3D :: TextureQuery TextureSize3D
+textureSize3D :: TextureQuery TextureTarget3D TextureSize3D
 textureSize3D t level =
    makeGettableStateVar $
       liftM3 TextureSize3D
-             (getTexLevelParameteri fromIntegral NoProxy t level TextureWidth )
-             (getTexLevelParameteri fromIntegral NoProxy t level TextureHeight)
-             (getTexLevelParameteri fromIntegral NoProxy t level TextureDepth )
+             (getTexLevelParameteriNoProxy fromIntegral t level TextureWidth )
+             (getTexLevelParameteriNoProxy fromIntegral t level TextureHeight)
+             (getTexLevelParameteriNoProxy fromIntegral t level TextureDepth )
 
-textureBorder :: TextureQuery Border
+textureBorder :: QueryableTextureTarget t => TextureQuery t Border
 textureBorder t level =
    makeGettableStateVar $
-      getTexLevelParameteri fromIntegral NoProxy t level TextureBorder
+      getTexLevelParameteriNoProxy fromIntegral t level TextureBorder
 
-textureRGBASizes :: TextureQuery (Color4 GLsizei)
+textureRGBASizes :: QueryableTextureTarget t =>  TextureQuery t (Color4 GLsizei)
 textureRGBASizes t level =
    makeGettableStateVar $
       liftM4 Color4
-             (getTexLevelParameteri fromIntegral NoProxy t level TextureRedSize  )
-             (getTexLevelParameteri fromIntegral NoProxy t level TextureGreenSize)
-             (getTexLevelParameteri fromIntegral NoProxy t level TextureBlueSize )
-             (getTexLevelParameteri fromIntegral NoProxy t level TextureAlphaSize)
+             (getTexLevelParameteriNoProxy fromIntegral t level TextureRedSize  )
+             (getTexLevelParameteriNoProxy fromIntegral t level TextureGreenSize)
+             (getTexLevelParameteriNoProxy fromIntegral t level TextureBlueSize )
+             (getTexLevelParameteriNoProxy fromIntegral t level TextureAlphaSize)
 
-textureSharedSize :: TextureQuery GLsizei
+textureSharedSize :: QueryableTextureTarget t =>  TextureQuery t GLsizei
 textureSharedSize t level =
    makeGettableStateVar $
-      getTexLevelParameteri fromIntegral NoProxy t level TextureSharedSize
+      getTexLevelParameteriNoProxy fromIntegral t level TextureSharedSize
 
-textureIntensitySize :: TextureQuery GLsizei
+textureIntensitySize :: QueryableTextureTarget t => TextureQuery t GLsizei
 textureIntensitySize t level =
    makeGettableStateVar $
-      getTexLevelParameteri fromIntegral NoProxy t level TextureIntensitySize
+      getTexLevelParameteriNoProxy fromIntegral t level TextureIntensitySize
 
-textureLuminanceSize :: TextureQuery GLsizei
+textureLuminanceSize :: QueryableTextureTarget t =>  TextureQuery t GLsizei
 textureLuminanceSize t level =
    makeGettableStateVar $
-      getTexLevelParameteri fromIntegral NoProxy t level TextureLuminanceSize
+      getTexLevelParameteriNoProxy fromIntegral t level TextureLuminanceSize
 
-textureIndexSize :: TextureQuery GLsizei
+textureIndexSize :: QueryableTextureTarget t => TextureQuery t GLsizei
 textureIndexSize t level =
    makeGettableStateVar $
-      getTexLevelParameteri fromIntegral NoProxy t level TextureIndexSize
+      getTexLevelParameteriNoProxy fromIntegral t level TextureIndexSize
 
-textureDepthBits :: TextureQuery GLsizei
+textureDepthBits :: QueryableTextureTarget t => TextureQuery t GLsizei
 textureDepthBits t level =
    makeGettableStateVar $
-      getTexLevelParameteri fromIntegral NoProxy t level DepthBits
+      getTexLevelParameteriNoProxy fromIntegral t level DepthBits
 
-textureCompressedImageSize :: TextureQuery (Maybe GLsizei)
+textureCompressedImageSize :: QueryableTextureTarget t => TextureQuery t (Maybe GLsizei)
 textureCompressedImageSize t level =
    makeGettableStateVar $ do
-      isCompressed <- getTexLevelParameteri unmarshalGLboolean NoProxy t level TextureCompressed
+      isCompressed <- getTexLevelParameteriNoProxy unmarshalGLboolean t level TextureCompressed
       if isCompressed
-         then getTexLevelParameteri (Just . fromIntegral) NoProxy t level TextureCompressedImageSize
+         then getTexLevelParameteriNoProxy (Just . fromIntegral) t level TextureCompressedImageSize
          else return Nothing
 
-textureProxyOK :: TextureQuery Bool
+textureProxyOK :: ParameterizedTextureTarget t => TextureQuery t Bool
 textureProxyOK t level =
    makeGettableStateVar $
-      getTexLevelParameteri unmarshalGLboolean Proxy t level TextureWidth
+      getTexLevelParameteri unmarshalGLboolean (marshalParameterizedTextureTargetProxy t) level TextureWidth
 
-getTexLevelParameteri :: (GLint -> a) -> Proxy -> Either TextureTarget CubeMapTarget -> Level -> TexLevelParameter -> IO a
-getTexLevelParameteri f proxy t level p =
+getTexLevelParameteriNoProxy :: QueryableTextureTarget t => (GLint -> a) -> t -> Level -> TexLevelParameter -> IO a
+getTexLevelParameteriNoProxy f = getTexLevelParameteri f . marshalQueryableTextureTarget
+
+getTexLevelParameteri :: (GLint -> a) -> GLenum -> Level -> TexLevelParameter -> IO a
+getTexLevelParameteri f t level p =
    alloca $ \buf -> do
-      glGetTexLevelParameteriv (either (marshalProxyTextureTarget proxy) (\c -> if proxy == Proxy then marshalProxyTextureTarget Proxy TextureCubeMap else marshalCubeMapTarget c) t) level (marshalTexLevelParameter p) buf
+      glGetTexLevelParameteriv t level (marshalTexLevelParameter p) buf
       peek1 f buf

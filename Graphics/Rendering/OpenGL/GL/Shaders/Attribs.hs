@@ -22,7 +22,7 @@ import Graphics.Rendering.OpenGL.GL.QueryUtils
 import Graphics.Rendering.OpenGL.GL.Shaders.Program
 import Graphics.Rendering.OpenGL.GL.Shaders.Variables
 import Graphics.Rendering.OpenGL.GL.StateVar
-import Graphics.Rendering.OpenGL.Raw.Core31
+import Graphics.Rendering.OpenGL.Raw
 
 --------------------------------------------------------------------------------
 
@@ -53,4 +53,9 @@ bindAttribLocation (Program program) (AttribLocation location) name =
 --------------------------------------------------------------------------------
 
 activeAttribs :: Program -> GettableStateVar [(GLint,VariableType,String)]
-activeAttribs = activeVars activeAttributes activeAttributeMaxLength glGetActiveAttrib
+activeAttribs =
+   activeVars
+      activeAttributes
+      activeAttributeMaxLength
+      glGetActiveAttrib
+      unmarshalVariableType
