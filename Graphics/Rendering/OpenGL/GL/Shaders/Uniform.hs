@@ -13,12 +13,14 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 
 module Graphics.Rendering.OpenGL.GL.Shaders.Uniform (
    -- * Uniform variables
    UniformLocation(..), uniformLocation, activeUniforms, Uniform(..),
-   UniformComponent,
+   UniformComponent, uniformBlockBinding, shaderStorageBlockBinding,
+
+   getShaderStorageBlockIndex
 
    -- TODO: glGetUniformSubroutineuiv
 ) where
@@ -35,7 +37,22 @@ import Graphics.Rendering.OpenGL.GL.StateVar
 import Graphics.Rendering.OpenGL.GL.Tensor
 import Graphics.Rendering.OpenGL.GL.VertexSpec
 import Graphics.Rendering.OpenGL.Raw.Core31
+import Graphics.Rendering.OpenGL.Raw.ARB.ShaderStorageBufferObject
+import Linear
 
+--------------------------------------------------------------------------------
+
+shaderStorageBlockBinding :: Program -> GLuint -> GLuint -> IO ()
+shaderStorageBlockBinding (Program program) = 
+  glShaderStorageBlockBinding program
+
+uniformBlockBinding :: Program -> GLuint -> GLuint -> IO ()
+uniformBlockBinding (Program program) = 
+  glUniformBlockBinding program
+
+getShaderStorageBlockIndex :: Program -> String -> IO GLuint
+getShaderStorageBlockIndex (Program p) str = withGLstring str $ \ptr ->
+  glGetProgramResourceIndex p gl_SHADER_STORAGE_BLOCK ptr
 --------------------------------------------------------------------------------
 
 numActiveUniforms :: Program -> GettableStateVar GLuint
@@ -75,6 +92,19 @@ class Storable a => UniformComponent a where
    uniform2v :: UniformLocation -> GLsizei -> Ptr a -> IO ()
    uniform3v :: UniformLocation -> GLsizei -> Ptr a -> IO ()
    uniform4v :: UniformLocation -> GLsizei -> Ptr a -> IO ()
+
+--instance UniformComponent (M44 Float) where
+--  uniform1 (UniformLocation ul) = error "Not implemented"
+--  uniform2 (UniformLocation ul) = error "Not implemented"
+--  uniform3 (UniformLocation ul) = error "Not implemented"
+--  uniform4 (UniformLocation ul) = error "Not implemented"
+
+--  getUniform (Program p) (UniformLocation ul) = error "Not implemented"
+
+--  uniform1v (UniformLocation ul) count ptr = glUniformMatrix4fv ul count 1 ptr
+--  uniform2v (UniformLocation ul) = error "Not implemented"  
+--  uniform3v (UniformLocation ul) = error "Not implemented"
+--  uniform4v (UniformLocation ul) = error "Not implemented"
 
 instance UniformComponent GLint where
    uniform1 (UniformLocation ul) = glUniform1i ul

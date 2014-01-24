@@ -32,7 +32,10 @@ module Graphics.Rendering.OpenGL.GL.VertexArrays (
    primitiveRestartIndex, primitiveRestartIndexNV,
 
    -- * Generic Vertex Attribute Arrays
-   vertexAttribPointer, vertexAttribArray,
+   vertexAttribPointer, vertexAttribArray, vertexAttribDivisor,
+
+   -- * Instanced draws
+   drawArraysInstanced
 ) where
 
 import Foreign.Marshal.Alloc
@@ -64,6 +67,7 @@ import Graphics.Rendering.OpenGL.Raw.ARB.Compatibility (
 import Graphics.Rendering.OpenGL.Raw.ARB.MatrixPalette (
    gl_MATRIX_INDEX_ARRAY, gl_MATRIX_INDEX_ARRAY_POINTER )
 import Graphics.Rendering.OpenGL.Raw.ARB.VertexBlend ( gl_WEIGHT_ARRAY_POINTER )
+import Graphics.Rendering.OpenGL.Raw.ARB.InstancedArrays ( glVertexAttribDivisor )
 import Graphics.Rendering.OpenGL.Raw.Core31
 import Graphics.Rendering.OpenGL.Raw.EXT.CompiledVertexArray
 import Graphics.Rendering.OpenGL.Raw.NV.PrimitiveRestart
@@ -347,6 +351,9 @@ type NumIndexBlocks = GLsizei
 arrayElement :: ArrayIndex -> IO ()
 arrayElement = glArrayElement
 
+drawArraysInstanced :: PrimitiveMode -> ArrayIndex -> NumArrayIndices -> GLsizei -> IO ()
+drawArraysInstanced = glDrawArraysInstanced . marshalPrimitiveMode
+
 drawArrays :: PrimitiveMode -> ArrayIndex -> NumArrayIndices -> IO ()
 drawArrays = glDrawArrays . marshalPrimitiveMode
 
@@ -466,6 +473,9 @@ getPointer n = alloca $ \buf -> do
 vertexAttribPointer :: AttribLocation -> StateVar (IntegerHandling, VertexArrayDescriptor a)
 vertexAttribPointer location =
    makeStateVar (getVertexAttribPointer_ location) (setVertexAttribPointer location)
+
+vertexAttribDivisor :: AttribLocation -> Integer -> IO ()
+vertexAttribDivisor (AttribLocation loc) divisor = glVertexAttribDivisor loc (fromIntegral divisor)
 
 getVertexAttribPointer_ :: AttribLocation -> IO (IntegerHandling, VertexArrayDescriptor a)
 getVertexAttribPointer_ location = do

@@ -37,7 +37,7 @@ module Graphics.Rendering.OpenGL.GL.BufferObjects (
    RangeStartIndex, RangeSize,
    BufferRange,
    IndexedBufferTarget(..),
-   bindBufferBase, bindBufferRange,
+   bindBufferBase', bindBufferBase, bindBufferRange,
    indexedBufferStart, indexedBufferSize
 ) where
 
@@ -378,24 +378,35 @@ type RangeSize = GLsizeiptr
 type BufferRange = (BufferObject, RangeStartIndex, RangeSize)
 
 data IndexedBufferTarget =
-     IndexedTransformFeedbackBuffer
+       IndexedUniformBuffer
+     | IndexedTransformFeedbackBuffer
 --marshaling
 marshalIndexedBufferTarget :: IndexedBufferTarget -> IPName1I
 marshalIndexedBufferTarget x = case x of
    IndexedTransformFeedbackBuffer -> GetTransformFeedbackBuffer
+-- * FIXME
+   IndexedUniformBuffer -> GetTransformFeedbackBuffer
+--   IndexedUniformBuffer -> GetUniformBufferBinding 
 
 marshalIndexedBufferStart :: IndexedBufferTarget -> IPName1I
 marshalIndexedBufferStart x = case x of
    IndexedTransformFeedbackBuffer -> GetTransformFeedbackBufferStart
+   -- * FIXME
+   IndexedUniformBuffer -> GetTransformFeedbackBufferStart
 
 marshalIndexedBufferSize :: IndexedBufferTarget -> IPName1I
 marshalIndexedBufferSize x = case x of
    IndexedTransformFeedbackBuffer -> GetTransformFeedbackBufferSize
+   -- * FIXME
+   IndexedUniformBuffer -> GetTransformFeedbackBufferSize
 
 getIndexed :: Num a => IPName1I -> BufferIndex -> GettableStateVar a
 getIndexed e i = makeGettableStateVar $ getInteger1i fromIntegral e i
 
 --buffer
+bindBufferBase' :: BufferTarget -> BufferIndex -> BufferObject -> IO ()
+bindBufferBase' t i (BufferObject b) = glBindBufferBase (marshalBufferTarget t) i b
+
 bindBufferBase :: IndexedBufferTarget -> BufferIndex -> StateVar (Maybe BufferObject)
 bindBufferBase t i = makeStateVar (getIndexedBufferBinding t i) (setIndexedBufferBase t i)
 
