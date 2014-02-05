@@ -20,7 +20,8 @@ module Graphics.Rendering.OpenGL.GL.Shaders.Uniform (
    UniformLocation(..), uniformLocation, activeUniforms, Uniform(..),
    UniformComponent, uniformBlockBinding, shaderStorageBlockBinding,
 
-   getShaderStorageBlockIndex
+   getShaderStorageBlockIndex,
+   getUniformBlockIndex
 
    -- TODO: glGetUniformSubroutineuiv
 ) where
@@ -49,6 +50,10 @@ uniformBlockBinding (Program program) =
 getShaderStorageBlockIndex :: Program -> String -> IO GLuint
 getShaderStorageBlockIndex (Program p) str = withGLstring str $ \ptr ->
   glGetProgramResourceIndex p gl_SHADER_STORAGE_BLOCK ptr
+
+getUniformBlockIndex :: Program -> String -> IO GLuint
+getUniformBlockIndex (Program p) str = withGLstring str $ \ptr ->
+  glGetUniformBlockIndex p ptr
 --------------------------------------------------------------------------------
 
 numActiveUniforms :: Program -> GettableStateVar GLuint
