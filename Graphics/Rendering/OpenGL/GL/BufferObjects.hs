@@ -16,6 +16,7 @@
 module Graphics.Rendering.OpenGL.GL.BufferObjects (
    -- * Buffer Objects
    BufferObject,
+   nullBuffer,
 
    -- * Binding Buffer Objects
    BufferTarget(..), bindBuffer, arrayBufferBinding,
@@ -60,6 +61,9 @@ import Graphics.Rendering.OpenGL.Raw
 
 newtype BufferObject = BufferObject { bufferID :: GLuint }
    deriving ( Eq, Ord, Show )
+
+nullBuffer :: BufferObject
+nullBuffer = BufferObject 0
 
 --------------------------------------------------------------------------------
 
