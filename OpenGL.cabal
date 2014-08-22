@@ -141,7 +141,7 @@ library
    Graphics.Rendering.OpenGL.GL.Texturing.TextureUnit,
    Graphics.Rendering.OpenGL.GL.VertexAttributes,
    Graphics.Rendering.OpenGL.GLU.ErrorsInternal
-  ghc-options: -Wall -O2
+  ghc-options: -Wall -fprof-auto
   build-depends:
    base >= 3 && < 5, bytestring, text, OpenGLRaw >= 1.4.1.0, GLURaw >= 1.3.0.0
 
